@@ -31,15 +31,16 @@ def affine_forward(x, w, b):
     
     x_reshape = np.reshape(x, (N,-1))
     
-    D = x_reshape.shape[1]
-
     out = np.dot(x_reshape, w) + b
+    
+    assert out.shape[0] == N
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
     cache = (x, w, b)
+
     return out, cache
 
 
@@ -815,6 +816,7 @@ def softmax_loss(x, y):
     log_probs = shifted_logits - np.log(Z)
     probs = np.exp(log_probs)
     N = x.shape[0]
+              
     loss = -np.sum(log_probs[np.arange(N), y]) / N
     dx = probs.copy()
     dx[np.arange(N), y] -= 1
