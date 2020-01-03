@@ -30,10 +30,14 @@ def affine_forward(x, w, b):
     N = x.shape[0]
     
     x_reshape = np.reshape(x, (N,-1))
+
+    # print(x_reshape.shape)
+    # print(w.shape)
+    # print(b.shape)
     
     out = np.dot(x_reshape, w) + b
     
-    assert out.shape[0] == N
+    # assert out.shape[0] == N
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
