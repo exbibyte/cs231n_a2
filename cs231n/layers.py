@@ -27,7 +27,13 @@ def affine_forward(x, w, b):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = x.shape[0]
+    
+    x_reshape = np.reshape(x, (N,-1))
+    
+    D = x_reshape.shape[1]
+
+    out = np.dot(x_reshape, w) + b
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -60,8 +66,17 @@ def affine_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # out = x*w
 
+    N = x.shape[0]
+    x_reshape = np.reshape(x, (N,-1))
+    D = x_reshape.shape[1]
+    
+    dw = np.dot( x_reshape.T, dout )
+    db = np.sum( dout, axis=0 )
+    dx = np.dot( dout, w.T )
+    dx = np.reshape( dx, x.shape )
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -86,7 +101,8 @@ def relu_forward(x):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    z = np.zeros(x.shape)
+    out = np.maximum(x, z)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -113,7 +129,11 @@ def relu_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    out = np.maximum(x,0)
+
+    temp = dout
+    temp[out<=0] = 0
+    dx = temp
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################

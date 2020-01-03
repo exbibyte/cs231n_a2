@@ -49,8 +49,18 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        W1 = np.random.normal(loc=0.0, scale=weight_scale, size=(input_dim))
 
+        W2 = np.random.normal(loc=0.0, scale=weight_scale, size=(hidden_dim))
+
+        b1 = np.zeros((input_dim))
+        b2 = np.zeros((input_dim))
+
+        self.params['W1'] = W1
+        self.params['W2'] = W2
+        self.params['b1'] = b1
+        self.params['b2'] = b2
+        
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -83,8 +93,12 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        layer0, (x1,w1,b1) = affine_forward(X, self.params['W1'], self.params['b1'])
 
+        layer0_relu, cache_input = relu_forward(layer0)
+        
+        scores, (x2,w2,b2) = affine_forward(layer0_relu, self.params['W2'], self.params['b2'])
+        
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -107,7 +121,29 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        l, dscores = softmax_loss(scores, y)
+
+        loss = l + self.reg * 0.5 * ( np.sum(self.params['W1'] * self.params['W1']) + np.sum(self.params['W2'] * self.params['W2']) )
+
+        d_layer0_relu, dw2, db2 = affine_backward(dscores, (x2,w2,b2))
+        
+        grads['W1'] = 0
+        grads['W2'] = 0
+        grads['b1'] = 0
+        grads['b2'] = 0
+        
+        grads['W1'] += self.reg * self.params['W1']
+        grads['W2'] += self.reg * self.params['W2']
+        
+        grads['W2'] += dw2
+        grads['b2'] += db2
+
+        d_layer0 = relu_backward(d_layer0_relu, cache_input)
+
+        _, dw1, db1 = affine_backward(d_layer0, (x1,w1,b1))
+
+        grads['W1'] += dw1
+        grads['b1'] += db1
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
