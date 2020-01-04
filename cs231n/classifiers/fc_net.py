@@ -214,23 +214,29 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        for i in range(self.num_layers)]:
+        # print("input_dim:", input_dim)
+        # print("self.num_layers:", self.num_layers)
+        # print("len(hidden_dims):", len(hidden_dims))
+        
+        for i in range(self.num_layers):
 
             W = None
             b = None
             
             if i==0:
-                W = np.random.normal(loc=0.0, scale=weight_scale, size=(input_dim, hidden_dim))
-                b = np.zeros((hidden_dim))
-            if i==self.num_layers - 1:
-                W = np.random.normal(loc=0.0, scale=weight_scale, size=(hidden_dim, num_classes))
+                W = np.random.normal(loc=0.0, scale=weight_scale, size=(input_dim, hidden_dims[i]))
+                b = np.zeros((hidden_dims[i]))
+            elif i==self.num_layers - 1:
+                W = np.random.normal(loc=0.0, scale=weight_scale, size=(hidden_dims[i-1], num_classes))
                 b = np.zeros((num_classes))
             else:
-                W = np.random.normal(loc=0.0, scale=weight_scale, size=(hidden_dim, hidden_dim))
-                b = np.zeros((hidden_dim))
+                W = np.random.normal(loc=0.0, scale=weight_scale, size=(hidden_dims[i-1], hidden_dims[i]))
+                b = np.zeros((hidden_dims[i]))
 
-            self.params[W + str(i)] = W
-            self.params[b + str(i)] = b
+            # print("wshape: ", W.shape, "bshape: ", b.shape)
+                
+            self.params['W' + str(i)] = W
+            self.params['b' + str(i)] = b
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -296,21 +302,25 @@ class FullyConnectedNet(object):
         current = None
         caches_affine = []
         caches_relu = []
+
+        # print(self.params.keys())
         
-        for i in range(self.num_layers)]:
+        for i in range(self.num_layers):
 
             w_key = "W" + str(i)
             b_key = "b" + str(i)
 
             inputs = X if 0==i else current
-                
-            current, cache = affine_forward(inputs, self.params[w_key], self.params[b_Key])
-            caches_affine.append(cache)
+
+            # print(i, inputs.shape, self.params[w_key].shape, self.params[b_key].shape)
             
+            current, cache = affine_forward(inputs, self.params[w_key], self.params[b_key])
+            caches_affine.append(cache)
+            # print(i,self.num_layers - 1)
             if i!=self.num_layers - 1:
-                
-                current, caches = relu_forward(current)
+                current, cache = relu_forward(current)
                 caches_relu.append(cache)
+                # print("relu cache shape: ", caches_relu[-1].shape)
 
         scores = current
                     
@@ -355,10 +365,13 @@ class FullyConnectedNet(object):
             grads[w_key] += self.reg * self.params[w_key]
             
         differential = dscores
-        
+
+        # print("len(caches_relu):",len(caches_relu))
+
         for i in range(self.num_layers-1, -1, -1):
 
             if self.num_layers-1 != i:
+                # print(i, "caches_relu[i].shape:", np.array(caches_relu[i].shape))
                 differential = relu_backward(differential, caches_relu[i])
 
             differential, dw, db = affine_backward(differential, caches_affine[i])
