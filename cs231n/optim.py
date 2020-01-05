@@ -106,7 +106,14 @@ def rmsprop(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    second_moment_avg = config['cache']
+    decay = config['decay_rate']
+    l = config['learning_rate']
+    eps = config['epsilon']
+
+    second_moment_avg = decay * second_moment_avg + (1-decay) * dw*dw
+    config['cache'] = second_moment_avg
+    next_w = w - dw * l * 1/(np.sqrt(second_moment_avg)+eps)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -150,7 +157,23 @@ def adam(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    m = config['m']
+    v = config['v']
+    config['t'] = config['t'] + 1
+    t = config['t']
+    
+    m = config['beta1'] * m + (1-config['beta1']) * dw
+    v = config['beta2'] * v + (1-config['beta2']) * dw * dw
+    config['m'] = m
+    config['v'] = v
+    
+    m_hat = m/(1-config['beta1']**t)
+    v_hat = v/(1-config['beta2']**t)
+    
+    l = config['learning_rate']
+    eps = config['epsilon']
+    
+    next_w = w - l * m_hat/(np.sqrt(v_hat) + eps)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
