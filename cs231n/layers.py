@@ -294,7 +294,7 @@ def batchnorm_backward(dout, cache):
          - 1./N * a * gamma * (np.sum(dout, axis=0)) \
          - 1./N * a * gamma * x_hat * np.sum(dout * x_hat, axis=0) \
          + 1./N**2 * a * gamma * np.sum(dout * x_hat, axis=0) * np.sum(x_hat, axis=0)
-    
+
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -341,6 +341,10 @@ def batchnorm_backward_alt(dout, cache):
          - 1./N * a * gamma * (np.sum(dout, axis=0)) \
          - 1./N * a * gamma * x_hat * np.sum(dout * x_hat, axis=0) \
          + 1./N**2 * a * gamma * np.sum(dout * x_hat, axis=0) * np.sum(x_hat, axis=0)
+
+    # dx = dout * gamma * a \
+    #      - 1./N * a * gamma * (np.sum(dout, axis=0)) \
+    #      - 1./N * a * gamma * x_hat * np.sum(dout * x_hat, axis=0)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
