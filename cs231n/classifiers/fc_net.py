@@ -238,6 +238,10 @@ class FullyConnectedNet(object):
             self.params['W' + str(i)] = W
             self.params['b' + str(i)] = b
 
+            if 'batchnorm' == self.normalization and self.num_layers-1 != i:
+                self.params['gamma' + str(i)] = 1.
+                self.params['beta' + str(i)] = 0.
+
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -302,7 +306,8 @@ class FullyConnectedNet(object):
         current = None
         caches_affine = []
         caches_relu = []
-
+        caches_batch_norm = []
+        
         # print(self.params.keys())
         
         for i in range(self.num_layers):
@@ -316,6 +321,14 @@ class FullyConnectedNet(object):
             
             current, cache = affine_forward(inputs, self.params[w_key], self.params[b_key])
             caches_affine.append(cache)
+
+            if 'batchnorm' == self.normalization and self.num_layers-1 != i:
+                gamma = self.params['gamma' + str(i)]
+                beta = self.params['beta' + str(i)]
+                bn_param = self.bn_params[i]
+                current, cache = batchnorm_forward(current, gamma, beta, bn_param)
+                caches_batch_norm.append(cache)
+
             # print(i,self.num_layers - 1)
             if i!=self.num_layers - 1:
                 current, cache = relu_forward(current)
@@ -356,9 +369,15 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers):
             w_key = 'W' + str(i)
             b_key = 'b' + str(i)
-
+            
             grads[w_key] = 0
             grads[b_key] = 0
+            
+            if 'batchnorm' == self.normalization and self.num_layers-1 != i:
+                key_bn_gamma = 'gamma' + str(i)
+                key_bn_beta = 'beta' + str(i)
+                grads[key_bn_gamma] = 0
+                grads[key_bn_beta] = 0
             
             loss += self.reg * 0.5 * ( np.sum(self.params[w_key] * self.params[w_key]) )
 
@@ -371,7 +390,14 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers-1, -1, -1):
 
             if self.num_layers-1 != i:
-                # print(i, "caches_relu[i].shape:", np.array(caches_relu[i].shape))
+                
+                if 'batchnorm' == self.normalization:
+                    differential, dgamma, dbeta = batchnorm_backward_alt(differential, caches_batch_norm[i])
+                    key_bn_gamma = 'gamma' + str(i)
+                    key_bn_beta = 'beta' + str(i)
+                    grads[key_bn_gamma] += dgamma
+                    grads[key_bn_beta] += dbeta
+
                 differential = relu_backward(differential, caches_relu[i])
 
             differential, dw, db = affine_backward(differential, caches_affine[i])
