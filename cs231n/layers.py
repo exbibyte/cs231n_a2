@@ -579,33 +579,49 @@ def conv_forward_naive(x, w, b, conv_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     
-    N = x.shape[0]
+    N, C, H, W = x.shape
     
     stride = conv_param['stride']
     pad = conv_param['pad']
 
-    F, C, HH, WW = w.shape
+    F, _, HH, WW = w.shape
     
-    H_prime = 1 + (H + 2 * pad - HH) / stride
-    W_prime = 1 + (W + 2 * pad - WW) / stride
+    H_prime = int(1 + (H + 2 * pad - HH) / stride)
+    W_prime = int(1 + (W + 2 * pad - WW) / stride)
     
-    x_pad = np.pad(x[:,], conv_param['pad'])
+    x_pad = np.pad(x, ((0,0),(0,0),(pad, pad),(pad, pad))) #dim: (N, C, H+2*pad, W+2*pad)
+    check = x == x_pad[:,:,pad:-pad, pad:-pad]
+    assert(np.sum(check) == x.size)
     
-    print("x.shape", x.shape)
-    print("x_pad.shape", x_pad.shape)
-    
-    out = np.zeros(N, F, H_prime, W_prime)
+    out = np.zeros((N, F, H_prime, W_prime))
 
-    for f in F:
-        for hh in range(H_prime):
-            for ww in range(W_prime):
-                out[:, f, hh:hh+HH, ww:ww+WW] = w[f, :] * x_pad[:, hh:hh+HH, ww:ww+WW]
+    import itertools
 
+    # for i, f, hh, ww in itertools.product(range(N), range(F), range(H_prime), range(W_prime)):
+    #     out[i, f, hh, ww] = np.sum(w[f, :] * x_pad[i, :, stride*hh:stride*hh+HH, stride*ww:stride*ww+WW]) + b[f]
+
+    #partially vectorized for i
+    # for f, hh, ww in itertools.product(range(F), range(H_prime), range(W_prime)):
+    #     out[:, f, hh, ww] = np.sum(w[f, :] * x_pad[:, :, stride*hh:stride*hh+HH, stride*ww:stride*ww+WW], axis=(1,2,3)) + b[f]
+
+    #partially vectorized for f
+    # for i, hh, ww in itertools.product(range(N), range(H_prime), range(W_prime)):
+    #     out[i, :, hh, ww] = np.sum(w[:, :] * x_pad[i, :, stride*hh:stride*hh+HH, stride*ww:stride*ww+WW], axis=(1,2,3)) + b[:]
+
+    #partially vectorized for i, f
+    for hh, ww in itertools.product(range(H_prime), range(W_prime)):
+        #expand w to (1,F,C,WW,HH)
+        #expand x_pad to (N,1,C,W,H)
+        #contraction along axis: C,W(local),H(local)
+        #output axis: N,F,W_prime,H_prime
+        out[:, :, hh, ww] = np.sum( np.expand_dims(w,axis=0) * np.expand_dims(x_pad[:, :, stride*hh:stride*hh+HH, stride*ww:stride*ww+WW], axis=1), axis=(2,3,4)) + b[:]
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
     cache = (x, w, b, conv_param)
+
     return out, cache
 
 
