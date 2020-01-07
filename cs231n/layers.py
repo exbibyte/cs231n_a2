@@ -342,10 +342,6 @@ def batchnorm_backward_alt(dout, cache):
          - 1./N * a * gamma * x_hat * np.sum(dout * x_hat, axis=0) \
          + 1./N**2 * a * gamma * np.sum(dout * x_hat, axis=0) * np.sum(x_hat, axis=0)
 
-    # dx = dout * gamma * a \
-    #      - 1./N * a * gamma * (np.sum(dout, axis=0)) \
-    #      - 1./N * a * gamma * x_hat * np.sum(dout * x_hat, axis=0)
-
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -390,7 +386,14 @@ def layernorm_forward(x, gamma, beta, ln_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, D = x.shape
+
+    sample_mean = np.sum(x, axis=1) / D
+    sample_var = np.sum(np.power(x-np.expand_dims(sample_mean, axis=1), 2), axis=1) / D
+    x_hat = (x - np.expand_dims(sample_mean, axis=1)) / (np.sqrt(np.expand_dims(sample_var, axis=1) + eps)) #dim:(N,D)
+    out = gamma * x_hat + beta
+
+    cache = (x, x_hat, gamma, beta, sample_mean, sample_var, eps)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -424,9 +427,21 @@ def layernorm_backward(dout, cache):
     # still apply!                                                            #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    
+    N, D = dout.shape
+    
+    x, x_hat, gamma, beta, sample_mean, sample_var, eps = cache
 
-    pass
-
+    dbeta = np.sum(dout, axis=0)
+    dgamma = np.sum(dout * x_hat, axis=0)
+        
+    a = 1.0/np.sqrt(sample_var + eps) #dim: (N)
+    
+    dx = dout * np.expand_dims(gamma, axis=0) * np.expand_dims(a, axis=1) \
+         - 1./D * np.sum(dout * np.expand_dims(a,axis=1) * np.expand_dims(gamma, axis=0), axis=1, keepdims=True) \
+         - 1./D * np.expand_dims(a, axis=1) * x_hat * np.sum( dout * np.expand_dims(gamma, axis=0) * x_hat, axis=1, keepdims=True) \
+         + 1./D**2 * np.expand_dims(a, axis=1) * np.sum(dout * np.expand_dims(gamma, axis=0) * x_hat, axis=1, keepdims=True) * np.sum(x_hat, axis=1, keepdims=True)
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
