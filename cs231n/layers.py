@@ -644,8 +644,46 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    import itertools
+        
+    x, w, b, conv_param = cache
+        
+    N, C, H, W = x.shape
+    
+    stride = conv_param['stride']
+    pad = conv_param['pad']
 
+    F, _, HH, WW = w.shape # dim:(F,C,HH,WW)
+    
+    H_prime = int(1 + (H + 2 * pad - HH) / stride)
+    W_prime = int(1 + (W + 2 * pad - WW) / stride)
+
+    #dout: shape (N, F, H_prime, W_prime)
+    db = np.sum(dout, axis=(0,2,3))
+    
+    dw = np.zeros(w.shape)
+    x_pad = np.pad(x, ((0,0),(0,0),(pad, pad),(pad, pad))) #dim: (N, C, H+2*pad, W+2*pad)
+    dx_pad = np.pad(np.zeros(x.shape), ((0,0),(0,0),(pad, pad),(pad, pad))) #dim: (N, C, H+2*pad, W+2*pad)
+
+    # for i, f, hh, ww in itertools.product(range(N), range(F), range(H_prime), range(W_prime)):
+    #     dw[f, :] += dout[i, f, hh, ww] * x_pad[i, :, stride*hh:stride*hh+HH, stride*ww:stride*ww+WW]
+    #     dx_pad[i,:,stride*hh:stride*hh+HH, stride*ww:stride*ww+WW] += dout[i,f,hh,ww] * w[f,:,:,:]
+    
+    # # partially vectorized for i
+    # for f, hh, ww in itertools.product(range(F), range(H_prime), range(W_prime)):
+    #     dw[f, :] += np.sum(dout[:, f, hh, ww][:,np.newaxis,np.newaxis,np.newaxis] * x_pad[:, :, stride*hh:stride*hh+HH, stride*ww:stride*ww+WW], axis=0)
+    #     dx_pad[:,:,stride*hh:stride*hh+HH, stride*ww:stride*ww+WW] += dout[:,f,hh,ww][:,np.newaxis,np.newaxis,np.newaxis] * w[f,:,:,:][np.newaxis,:]
+
+    # partially vectorized for i, f
+    for hh, ww in itertools.product(range(H_prime), range(W_prime)):
+        dw[:, :] += np.sum(dout[:, :, hh, ww][...,np.newaxis, np.newaxis, np.newaxis] * np.expand_dims(x_pad[:, :, stride*hh:stride*hh+HH, stride*ww:stride*ww+WW], axis=1), axis=0)
+        dx_pad[:,:,stride*hh:stride*hh+HH, stride*ww:stride*ww+WW] += np.sum(dout[:,:,hh,ww][...,np.newaxis,np.newaxis,np.newaxis] * w[:,:,:,:][np.newaxis,...], axis=1)
+        
+    dx = dx_pad[:,:,pad:-pad,pad:-pad]
+
+    #--------------
+    #todo: backward convolution
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -678,7 +716,23 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N,C,H,W = x.shape
+
+    ph = pool_param['pool_height']
+    pw = pool_param['pool_width']
+    ps = pool_param['stride']
+    
+    H_prime = 1 + (H - ph) // ps
+    W_prime = 1 + (W - pw) // ps
+
+    import itertools
+
+    out = np.zeros((N, C, H_prime, W_prime))
+    
+    for h,w in itertools.product(range(H_prime), range(W_prime)):
+        
+        m = np.amax(x[:, :, h*ps:h*ps+ph, w*ps:w*ps+pw], axis=(2,3))
+        out[:,:,h,w] = m
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -705,7 +759,30 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    import itertools
+
+    x, pool_param = cache
+
+    N,C,H,W = x.shape
+    
+    ph = pool_param['pool_height']
+    pw = pool_param['pool_width']
+    ps = pool_param['stride']
+        
+    H_prime = 1 + (H - ph) // ps
+    W_prime = 1 + (W - pw) // ps
+    
+    dx = np.zeros(x.shape)
+    
+    for h,w in itertools.product(range(H_prime), range(W_prime)):
+        
+        for i, c in itertools.product(range(N), range(C)):
+            
+            index = np.unravel_index(np.argmax(x[i, c, h*ps:h*ps+ph, w*ps:w*ps+pw]),
+                                     x[i, c, h*ps:h*ps+ph, w*ps:w*ps+pw].shape)
+            
+            dx[i, c, h*ps:h*ps+ph, w*ps:w*ps+pw][index] += dout[i, c, h, w]
+        
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
