@@ -615,7 +615,7 @@ def conv_forward_naive(x, w, b, conv_param):
         #contraction along axis: C,W(local),H(local)
         #output axis: N,F,W_prime,H_prime
         out[:, :, hh, ww] = np.sum( np.expand_dims(w,axis=0) * np.expand_dims(x_pad[:, :, stride*hh:stride*hh+HH, stride*ww:stride*ww+WW], axis=1), axis=(2,3,4)) + b[:]
-    
+        
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #

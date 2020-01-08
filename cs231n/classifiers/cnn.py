@@ -54,8 +54,26 @@ class ThreeLayerConvNet(object):
         # the start of the loss() function to see how that happens.                #                           
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        
+        #F,C,H,W
+        channels, H, W = input_dim
 
-        pass
+        self.params['W1'] = np.random.normal(scale=weight_scale,
+                                             size=(num_filters, channels, filter_size, filter_size))
+        self.params['b1'] = np.zeros((filter_size))
+
+        pool_w = 2
+        pool_h = 2
+        pool_stride = 2
+        affine_dim_D = int(num_filters * ((H-pool_h)/pool_stride+1) * ((W-pool_w)/pool_stride+1))
+                                           
+        self.params['W2'] = np.random.normal(scale=weight_scale,
+                                             size=(hidden_dim, affine_dim_D))
+        self.params['b2'] = np.zeros((affine_dim_D))
+
+        self.params['W3'] = np.random.normal(scale=weight_scale,
+                                             size=(num_classes, hidden_dim))
+        self.params['b3'] = np.zeros((hidden_dim))
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -95,7 +113,15 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # pipeline:
+        # conv - relu - 2x2 max pool - affine - relu - affine - softmax
+        out_1, cache_1 = conv_relu_pool_forward(W, W1, b1, conv_param, pool_param)
+
+        out_2, cache_2 = affine_relu_forward(out_1, W2, b2)
+
+        out_3, cache_3 = affine_forward(out_2, W3, b3)
+
+        scores = out_3
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -118,7 +144,7 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, d_out_3 = softmax_loss(out_3, y)        
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
