@@ -294,7 +294,7 @@ def batchnorm_backward(dout, cache):
          - 1./N * a * gamma * (np.sum(dout, axis=0)) \
          - 1./N * a * gamma * x_hat * np.sum(dout * x_hat, axis=0) \
          + 1./N**2 * a * gamma * np.sum(dout * x_hat, axis=0) * np.sum(x_hat, axis=0)
-
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -331,7 +331,6 @@ def batchnorm_backward_alt(dout, cache):
     N, D = dout.shape
     
     x, x_hat, gamma, beta, batch_mean, batch_var, eps = cache
-    
     dbeta = np.sum(dout, axis=0)
     dgamma = np.sum(dout * x_hat, axis=0)
 
@@ -434,7 +433,7 @@ def layernorm_backward(dout, cache):
 
     dbeta = np.sum(dout, axis=0)
     dgamma = np.sum(dout * x_hat, axis=0)
-        
+    
     a = 1.0/np.sqrt(sample_var + eps) #dim: (N)
     
     dx = dout * np.expand_dims(gamma, axis=0) * np.expand_dims(a, axis=1) \
@@ -824,7 +823,13 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N,C,H,W = x.shape
+    out = np.zeros(x.shape)
+    cache = []
+    for c in range(C):
+        o, cache_cur = batchnorm_forward( np.reshape(x[:,c,:,:], (N,H*W)), gamma[c], beta[c], bn_param)
+        out[:,c,:,:] = np.reshape(o, (N,H,W))
+        cache.append(cache_cur)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -858,7 +863,17 @@ def spatial_batchnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N,C,H,W = dout.shape
+
+    dgamma = np.zeros((C))
+    dbeta = np.zeros((C))
+    dx = np.zeros(dout.shape)
+    
+    for c in range(C):
+        dx_, dg, db = batchnorm_backward(np.reshape(dout[:,c,:,:],(N,H*W)), cache[c])
+        dgamma[c] = sum(dg)
+        dbeta[c] = sum(db)
+        dx[:,c,:,:] += np.reshape(dx_, (N,H,W))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -877,8 +892,8 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
 
     Inputs:
     - x: Input data of shape (N, C, H, W)
-    - gamma: Scale parameter, of shape (C,)
-    - beta: Shift parameter, of shape (C,)
+    - gamma: Scale parameter, of shape (1,C,1,1)
+    - beta: Shift parameter, of shape (1,C,1,1)
     - G: Integer mumber of groups to split into, should be a divisor of C
     - gn_param: Dictionary with the following keys:
       - eps: Constant for numeric stability
@@ -898,8 +913,21 @@ def spatial_groupnorm_forward(x, gamma, beta, G, gn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N,C,H,W = x.shape
+    out = np.zeros(x.shape)
 
+    g_size = C // G
+
+    x_reshape = np.reshape(x, (N,G,-1,H,W))
+
+    means = np.sum(x_reshape, axis=(2,3,4), keepdims=True) / (x_reshape.shape[2] * x_reshape.shape[3] * x_reshape.shape[4])
+    variances = np.sum(np.power(x_reshape-means, 2), axis=(2,3,4), keepdims=True) / (x_reshape.shape[2] * x_reshape.shape[3] * x_reshape.shape[4])
+    x_hat = np.reshape((x_reshape-means)/np.sqrt(variances + eps), (N,-1,H,W))
+    
+    out = gamma * x_hat + beta
+
+    cache = (x, x_hat, gamma, beta, means, variances, eps, G)
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -928,8 +956,38 @@ def spatial_groupnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x, x_hat, gamma, beta, means, variances, eps, G = cache
+    
+    #effective dims:
+    #means dim:(N,G,1,1,1)
+    #variances dim:(N,G,1,1,1)
 
+    gamma_reshape = np.reshape(gamma, (1,G,-1,1))
+    beta_reshape = np.reshape(beta, (G,-1))
+    
+    N,C,H,W = dout.shape
+    dx = np.zeros(dout.shape)
+
+    dgamma = np.zeros((C))
+    dbeta = np.zeros((C))
+    g_size = C // G
+
+    # partition into G groups of channels before computing derivative exactly the same way as layer normalization, except on groups of channels instead of on all channels
+    
+    dout_reshape = np.reshape(dout, (N,G,-1,H,W))
+    
+    dbeta = np.sum(dout, axis=(0,2,3), keepdims=True)
+    dgamma = np.sum(dout * x_hat, axis=(0,2,3), keepdims=True)
+
+    partition_func = 1. / (g_size * H * W)
+
+    a = 1.0/np.sqrt(variances + eps) #dim: (N,G,1,1,1)
+    aa = np.reshape(np.broadcast_to(a,(N,G,g_size,H,W)), (G,C,H,W))
+    
+    dx = dout * gamma * aa \
+         + np.reshape(np.broadcast_to(-1. * partition_func * np.sum(np.reshape(dout * gamma *aa, (N,G,-1,H,W)), axis=(2,3,4), keepdims=True), (N,G,g_size,H,W)), (N,C,H,W))\
+         -1. * partition_func * aa * x_hat * np.reshape(np.broadcast_to(np.sum(np.reshape(dout * gamma * x_hat, (N,G,-1,H,W)), axis=(2,3,4), keepdims=True), (N, G, g_size, H, W)), (N,C,H,W))
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
